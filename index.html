@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#FF2442">
+  <title>社团百宝箱 · 百团大战</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- ===== 开屏页 ===== -->
+    <section id="screen-welcome" class="screen active">
+      <span class="float-emoji" style="top:12%;left:10%">🎤</span>
+      <span class="float-emoji" style="top:18%;right:12%">💃</span>
+      <span class="float-emoji" style="top:42%;left:6%">🏀</span>
+      <span class="float-emoji" style="top:38%;right:8%">🎮</span>
+      <span class="float-emoji" style="bottom:26%;left:12%">📸</span>
+      <span class="float-emoji" style="bottom:30%;right:10%">🎸</span>
+      <span class="float-emoji" style="bottom:8%;left:22%">🏮</span>
+      <span class="float-emoji" style="bottom:12%;right:20%">🎌</span>
+
+      <div class="w-inner">
+        <span class="w-date">📅 <span id="wDate"></span></span>
+        <h1 class="w-title">社团百宝箱</h1>
+        <div class="w-sub" id="wSub"></div>
+        <p class="w-desc">选方向 → 挑兴趣标签，<br>马上为你推荐最合适的社团和摊位位置！</p>
+        <div class="w-chips" id="wChips"></div>
+        <button class="cta-white" id="btnStart">开始选择兴趣 →</button>
+        <button class="w-link" id="btnWGuide">📖 活动介绍 · 玩法说明</button>
+        <button class="w-skip" id="btnBrowse">先随便逛逛 ›</button>
+        <div class="w-org" id="wOrg"></div>
+      </div>
+    </section>
+
+    <!-- ===== 兴趣选择页（两步：模块 → 标签） ===== -->
+    <section id="screen-interests" class="screen">
+      <header class="int-head">
+        <button class="back-btn" id="btnBack">‹</button>
+      </header>
+
+      <div id="stepModule">
+        <h2 class="int-title">选择一个感兴趣的方向</h2>
+        <p class="int-sub">四大模块任选其一，再挑选里面你喜欢的标签</p>
+        <div id="moduleGrid" class="module-grid"></div>
+      </div>
+
+      <div id="stepTags" style="display:none">
+        <div class="module-pill" id="curModule" title="点击更换模块"></div>
+        <h2 class="int-title">选择你的兴趣</h2>
+        <p class="int-sub">在该模块内勾选感兴趣的标签（可多选），为你推荐最契合的社团</p>
+        <div id="tagGrid" class="tag-grid"></div>
+      </div>
+
+      <div class="int-bar">
+        <button class="mini-btn2" id="btnPrevStep" style="display:none">‹ 上一步</button>
+        <span id="selCount">第 1 步 / 共 2 步</span>
+        <button class="cta disabled" id="btnConfirm" style="display:none">至少选择 1 个兴趣</button>
+      </div>
+    </section>
+
+    <!-- ===== 主界面：推荐 / 地图 / 全部 ===== -->
+    <section id="screen-main" class="screen">
+      <header class="topbar">
+        <div class="brand">🎓 <span id="brandName"></span></div>
+        <div class="topbar-btns">
+          <button class="mini-btn" id="btnGuide">📖 玩法</button>
+          <button class="mini-btn" id="btnRechoose">🎯 换兴趣</button>
+        </div>
+      </header>
+
+      <div class="pages">
+        <div class="page active" id="page-recommend"></div>
+        <div class="page" id="page-map"></div>
+        <div class="page" id="page-clubs"></div>
+      </div>
+
+      <nav class="bottom-nav">
+        <button data-page="recommend" class="active"><i>❤️</i>为你推荐</button>
+        <button data-page="map"><i>🗺️</i>场地地图</button>
+        <button data-page="clubs"><i>🎪</i>全部社团</button>
+      </nav>
+    </section>
+
+    <!-- ===== 详情 / 玩法弹层 ===== -->
+    <div id="modal" class="modal hidden">
+      <div class="mask"></div>
+      <div class="sheet" id="sheetBody"></div>
+    </div>
+
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
