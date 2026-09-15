@@ -55,7 +55,7 @@ const TAGS = [
   { id: "music",     name: "唱歌音乐",   emoji: "🎤", color: "#FF6B81", module: "renwen" },
   { id: "dance",     name: "舞蹈街舞",   emoji: "💃", color: "#F368A0", module: "renwen" },
   { id: "guitar",    name: "吉他弹唱",   emoji: "🎸", color: "#FF7E5F", module: "renwen" },
-  { id: "anime",     name: "动漫",       emoji: "🎌", color: "#A55EEA", module: "renwen" },
+  { id: "anime",     name: "动漫",       emoji: "🌸", color: "#A55EEA", module: "renwen" },
   { id: "hanfu",     name: "国风汉服",   emoji: "🏮", color: "#F5B041", module: "renwen" },
   { id: "photo",     name: "摄影摄像",   emoji: "📷", color: "#54A0FF", module: "renwen" },
   { id: "write",     name: "阅读写作",   emoji: "📖", color: "#70A1FF", module: "renwen" },
