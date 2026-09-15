@@ -26,7 +26,26 @@ var state = {
   mapMoved: false    // 地图拖动标记（防误触点击）
 };
 
-var STATUS_TEXT = { open: "🟢 摆摊中", closed: "⚪ 已收摊" };
+var STATUS_TEXT = { open: "摆摊中", closed: "已收摊" };
+
+/* ---------------- 颜色工具（渲染层降饱和，不动 data.js 里的原始色） ---------------- */
+function mixHex(hex, mode, k) { // mode "w" 混白 / "d" 混黑，k=权重 0~1
+  var h = String(hex).replace("#", "");
+  if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+  var r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+  var t = mode === "w" ? 255 : 34;
+  r = Math.round(r + (t - r) * k); g = Math.round(g + (t - g) * k); b = Math.round(b + (t - b) * k);
+  return "#" + [r, g, b].map(function (v) { return ("0" + v.toString(16)).slice(-2); }).join("");
+}
+function tint(hex, k) { return mixHex(hex, "w", k); }
+function shade(hex, k) { return mixHex(hex, "d", k); }
+var INK = "#22262B";
+
+var ICONS = {
+  search: '<svg class="s-ico" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>',
+  heart: '<svg viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>',
+  pin: '<svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>'
+};
 
 /* ---------------- 小工具 ---------------- */
 function tagOf(id) {
@@ -46,6 +65,53 @@ function esc(s) {
     return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
   });
 }
+
+/* 轻提示 toast（复制成功等），自动消失 */
+var _toastTimer = null;
+function toast(msg, s) {
+  var el = $("#toast");
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(function () { el.classList.remove("show"); }, (s || 1.6) * 1000);
+}
+
+/* 复制文本到剪贴板（HTTPS 优先 Clipboard API，兼容旧环境走 execCommand） */
+function copyText(text, okMsg) {
+  function fallback() {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.cssText = "position:fixed;opacity:0";
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand("copy");
+      toast(okMsg || "已复制");
+    } catch (e) { toast("复制失败，请手动长按复制"); }
+    document.body.removeChild(ta);
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function () { toast(okMsg || "已复制"); }, fallback);
+  } else {
+    fallback();
+  }
+}
+
+/* 图片加载失败兜底：头像回退到社团 logo emoji，照片隐藏占位（捕获阶段监听，动态插入的 img 也生效） */
+document.addEventListener("error", function (e) {
+  var img = e.target;
+  if (!img || img.tagName !== "IMG") return;
+  if (img.dataset.fb) {
+    var span = document.createElement("span");
+    span.textContent = img.dataset.fb;
+    img.replaceWith(span);
+  } else {
+    var box = img.closest(".d-photo");
+    if (box) box.style.display = "none";
+    else img.style.display = "none";
+  }
+}, true);
 function boothZone(club) {
   return club.booth ? String(club.booth).split("-")[0] : null;
 }
@@ -53,7 +119,7 @@ function clubById(id) {
   return CONFIG.clubs.filter(function (c) { return c.id === Number(id); })[0];
 }
 function isRealClub(c) { return !!c.module; } // 赞助商等非社团摊位不参与推荐
-function statusText(c) { return STATUS_TEXT[c.status] || "🟢 摆摊中"; }
+function statusText(c) { return STATUS_TEXT[c.status] || "摆摊中"; }
 
 /* ---------------- 屏幕切换 ---------------- */
 function showScreen(name) {
@@ -185,31 +251,31 @@ function scoreClub(club) {
 function boothPill(club) {
   var closed = club.status === "closed";
   if (club.booth) {
-    return '<span class="booth-pill' + (closed ? ' off' : '') + '">📍 ' + esc(club.booth) +
+    return '<span class="booth-pill' + (closed ? ' off' : '') + '">' + esc(club.booth) +
       (closed ? ' · 已收摊' : '') + '</span>';
   }
-  return '<span class="booth-pill pending">📍 摊位待定</span>';
+  return '<span class="booth-pill pending">摊位待定</span>';
 }
 
-/* 社团头像：有照片用第一张照片，没有用 logo emoji（照片接口） */
+/* 社团头像：有照片用第一张照片，没有用 logo emoji（照片接口；data-fb 为加载失败兜底） */
 function clubLogo(club) {
   if (club.photos && club.photos[0]) {
-    return '<img src="' + esc(club.photos[0]) + '" alt="' + esc(club.name) + '">';
+    return '<img src="' + esc(club.photos[0]) + '" alt="' + esc(club.name) + '" data-fb="' + esc(club.logo) + '" loading="lazy" decoding="async">';
   }
   return club.logo;
 }
 
 function clubCard(club, s, i, ranked) {
   var t0 = tagOf(club.tags[0] || "volunteer");
-  var rank = (ranked && i < 3) ? '<span class="rank r' + (i + 1) + '">' + (i + 1) + '</span>' : "";
+  var rank = (ranked && i < 3) ? '<span class="rank r' + (i + 1) + '">TOP ' + (i + 1) + '</span>' : "";
   var match = (ranked && s.matched.length)
-    ? '<span class="match">♥ 匹配 ' + s.pct + '%</span>' : "";
+    ? '<span class="match">' + ICONS.heart + ' 匹配 ' + s.pct + '%</span>' : "";
   var tags = club.tags.map(function (t) {
     return '<span class="t-chip">' + esc(tagOf(t).name) + '</span>';
   }).join("");
-  return '<div class="club-card" data-club="' + club.id + '" style="animation-delay:' + (i * 45) + 'ms">' +
+  return '<div class="club-card" data-club="' + club.id + '" style="animation-delay:' + (Math.min(i, 6) * 45) + 'ms">' +
     '<div class="c-top">' +
-    '<div class="c-logo" style="background:linear-gradient(135deg,' + t0.color + ',' + t0.color + 'CC)">' + clubLogo(club) + '</div>' +
+    '<div class="c-logo" style="background:' + t0.color + '12">' + clubLogo(club) + '</div>' +
     '<div class="c-main">' +
     '<div class="c-name">' + esc(club.name) + rank +
     '<span class="cat-chip" style="color:' + t0.color + ';background:' + t0.color + '1A">' + esc(club.cat) + '</span></div>' +
@@ -239,12 +305,12 @@ function renderRecommend() {
   var m = state.module ? moduleOf(state.module) : null;
   var head = '<div class="rec-head"><h1>为你推荐</h1><p>' +
     (n
-      ? '根据你选择的「' + esc(m ? m.name : "") + '」模块和 <b style="color:#FF2442">' + n + '</b> 个兴趣匹配生成，越靠前越契合'
-      : '还没有选择兴趣，下面是全部社团；点击右上角「🎯 换兴趣」可获得个性化推荐') +
+      ? '根据你选择的「' + esc(m ? m.name : "") + '」模块和 <b style="color:var(--red)">' + n + '</b> 个兴趣匹配生成，越靠前越契合'
+      : '还没有选择兴趣，下面是全部社团；点击右上角「换兴趣」可获得个性化推荐') +
     '</p></div>';
   var body;
   if (!n) {
-    body = '<div class="tip-card">💡 选择兴趣标签后，这里会按匹配度为你排序推荐最合适的社团。</div>' +
+    body = '<div class="tip-card">选择兴趣标签后，这里会按匹配度为你排序推荐最合适的社团。</div>' +
       list.map(function (x, i) { return clubCard(x.c, x.s, i, false); }).join("");
   } else {
     body = list.map(function (x, i) { return clubCard(x.c, x.s, i, true); }).join("");
@@ -285,17 +351,18 @@ function buildVenueSvg(L) {
   (L.blocks || []).forEach(function (b) {
     if (b.type === "area") {
       svg += '<rect x="' + b.x + '" y="' + b.y + '" width="' + b.w + '" height="' + b.h +
-        '" fill="#F6F9FC" stroke="#8FA6BC" stroke-width="2" stroke-dasharray="7 5" rx="10"/>' +
-        '<text x="' + (b.x + b.w / 2) + '" y="' + (b.y + b.h / 2) + '" text-anchor="middle" dominant-baseline="central" font-size="20" font-weight="700" fill="#9FB3C8">' + esc(b.label) + '</text>';
+        '" fill="#FAFBFC" stroke="#C6CBD2" stroke-width="1.5" stroke-dasharray="6 4" rx="10"/>' +
+        '<text x="' + (b.x + b.w / 2) + '" y="' + (b.y + b.h / 2) + '" text-anchor="middle" dominant-baseline="central" font-size="19" font-weight="600" letter-spacing="4" fill="#B0B6BE">' + esc(b.label) + '</text>';
     } else {
+      /* 舞台 / 门头：近黑色块（渲染层定色，data.js 的 color 字段不再使用） */
       svg += '<rect x="' + b.x + '" y="' + b.y + '" width="' + b.w + '" height="' + b.h +
-        '" fill="' + (b.color || "#C0392B") + '" rx="8"/>';
+        '" fill="' + INK + '" rx="8"/>';
       var lines = String(b.label).split(" ");
       var cy = b.y + b.h / 2;
       lines.forEach(function (ln, i) {
         var off = (i - (lines.length - 1) / 2) * 21;
         svg += '<text x="' + (b.x + b.w / 2) + '" y="' + (cy + off) + '" text-anchor="middle" dominant-baseline="central" font-size="' +
-          (lines.length > 1 ? 17 : 19) + '" font-weight="800" fill="#FFFFFF">' + esc(ln) + '</text>';
+          (lines.length > 1 ? 16 : 18) + '" font-weight="700" letter-spacing="2" fill="#FFFFFF">' + esc(ln) + '</text>';
       });
     }
   });
@@ -306,16 +373,18 @@ function buildVenueSvg(L) {
       var c = clubByBooth[cell.label];
       var closed = c && c.status === "closed";
       var rec = isRecommended(c);
-      var fill = c ? (closed ? "#E9EBEE" : zc) : "#EEF1F5";
-      var txt = c ? (closed ? "#9AA0A8" : "#FFFFFF") : "#B7BEC9";
-      var stroke = rec ? ' stroke="#FF2442" stroke-width="3"' : ' stroke="rgba(31,35,43,0.10)" stroke-width="1"';
+      var fill = c ? (closed ? "#ECEDF0" : tint(zc, 0.86)) : "#F2F3F5";
+      var txt = c ? (closed ? "#A6ABB2" : shade(zc, 0.42)) : "#B7BCC3";
+      var stroke = rec
+        ? ' stroke="#E5484D" stroke-width="2.5"'
+        : ' stroke="' + (c ? zc : "#D9DCE1") + '" stroke-width="1.2"';
       var click = c ? ' data-club="' + c.id + '" style="cursor:pointer"' : "";
       svg += '<g' + click + '><title>' + esc(c ? c.name + " · " + statusText(c) : "预留摊位 " + cell.label) + '</title>' +
-        '<rect x="' + cell.x + '" y="' + cell.y + '" width="' + run.size + '" height="' + run.size + '" rx="6" fill="' + fill + '"' + stroke + '/>' +
+        '<rect x="' + cell.x + '" y="' + cell.y + '" width="' + run.size + '" height="' + run.size + '" rx="5" fill="' + fill + '"' + stroke + '/>' +
         '<text x="' + (cell.x + run.size / 2) + '" y="' + (cell.y + run.size / 2) + '" text-anchor="middle" dominant-baseline="central" font-size="' +
-        Math.max(10, Math.round(run.size * 0.32)) + '" font-weight="800" fill="' + txt + '"' +
+        Math.max(10, Math.round(run.size * 0.32)) + '" font-weight="700" fill="' + txt + '"' +
         (closed ? ' text-decoration="line-through"' : "") + '>' + esc(cell.label) + '</text>' +
-        (rec ? '<text x="' + (cell.x + run.size - 2) + '" y="' + (cell.y + 3) + '" text-anchor="end" dominant-baseline="hanging" font-size="10" fill="#FF2442">❤</text>' : "") +
+        (rec ? '<circle cx="' + (cell.x + run.size - 4.5) + '" cy="' + (cell.y + 4.5) + '" r="2.6" fill="#E5484D"/>' : "") +
         '</g>';
       if (c) state._boothPos[c.id] = { x: cell.x + run.size / 2, y: cell.y + run.size / 2 };
     });
@@ -337,7 +406,7 @@ function renderMap() {
         return '<div class="bl-row" data-club="' + c.id + '">' +
           '<span class="bl-no' + (c.status === "closed" ? " off" : "") + '" style="--zc:' + z.color + '">' + esc(c.booth) + '</span>' +
           '<span class="bl-name">' + esc(c.name) + (c.status === "closed" ? ' <em class="bl-closed">已收摊</em>' : "") + '</span>' +
-          (isRecommended(c) ? '<span class="bl-love">❤ 推荐</span>' : "") +
+          (isRecommended(c) ? '<span class="bl-love">' + ICONS.heart + '推荐</span>' : "") +
           '<span class="bl-arrow">›</span></div>';
       }).join("");
   }).join("");
@@ -354,21 +423,22 @@ function renderMap() {
 
   box.innerHTML =
     '<div class="map-search-wrap">' +
-    '<div class="search"><span>🔍</span><input id="mapSearch" type="text" placeholder="搜社团名 / 标签 / 摊位号，地图定位" autocomplete="off"></div>' +
+    '<div class="search">' + ICONS.search + '<input id="mapSearch" type="text" placeholder="搜社团名 / 标签 / 摊位号，地图定位" autocomplete="off"></div>' +
     '<div class="map-results hidden" id="mapResults"></div>' +
     '</div>' +
     '<div class="map-card">' +
-    '<div class="map-title">🗺️ 活动场地地图' + (CONFIG.mapImage ? '' : '<span class="map-badge">场馆平面图 · 可缩放拖动</span>') + '</div>' +
+    '<div class="map-title">活动场地地图' + (CONFIG.mapImage ? '' : '<span class="map-badge">场馆平面图 · 可缩放拖动</span>') + '</div>' +
     '<div class="map-info">' +
-    '<span class="info-pill">📅 ' + esc(CONFIG.eventDate) + '</span>' +
-    '<span class="info-pill">📍 ' + esc(CONFIG.location) + '</span>' +
+    '<span class="info-pill">' + esc(CONFIG.eventDate) + '</span>' +
+    '<span class="info-pill">' + esc(CONFIG.location) + '</span>' +
     '</div>' +
     '<div class="legend">' +
     (CONFIG.zones || []).map(function (z) {
       return '<span class="lg" style="--c:' + z.color + '"><i></i>' + z.id + '区 ' + esc(z.name) + '</span>';
     }).join("") +
-    '<span class="lg" style="--c:#2C3A47"><i></i>主舞台</span>' +
-    '<span class="lg" style="--c:#9AA0A8"><i></i>灰色=已收摊</span>' +
+    '<span class="lg" style="--c:' + INK + '"><i></i>主舞台 / 门头</span>' +
+    '<span class="lg" style="--c:#A6ABB2"><i></i>灰色 = 已收摊</span>' +
+    '<span class="lg" style="--c:#E5484D"><i></i>红点 = 为你推荐</span>' +
     '</div>' +
     '<div class="map-viewport" id="mapViewport"><div class="map-canvas" id="mapCanvas">' + mapInner + '</div></div>' +
     '<div class="map-tools">' +
@@ -376,9 +446,9 @@ function renderMap() {
     '<button class="map-btn" id="zoomOut">−</button>' +
     '<button class="map-btn" id="zoomReset">⟲</button>' +
     '</div>' +
-    '<div class="map-note">📌 ' +
+    '<div class="map-note">' +
     (CONFIG.mapImage ? '以上摊位图由负责人上传，可缩放查看。' : '当前为仿百团大战的场馆平面图（布局由管理员在 js/data.js 的 MAP_LAYOUT 提前标注，仅作摊位导览、非实时导航）。') +
-    '带 ❤ 的是根据你的兴趣推荐的摊位；灰色划线格子表示该社团已收摊。点击摊位格子可查看社团详情。</div>' +
+    '带红点的是根据你的兴趣推荐的摊位；灰色划线格子表示该社团已收摊。点击摊位格子可查看社团详情。</div>' +
     '</div>' +
     '<div class="booth-list">' + listRows + '</div>';
 
@@ -528,15 +598,21 @@ function setupMapSearch() {
       ? hits.map(function (c) {
         var zc = zoneColor(boothZone(c));
         return '<div class="map-result" data-club="' + c.id + '" style="--zc:' + zc + '">' +
-          '<span class="c-logo mini" style="background:linear-gradient(135deg,' + zc + ',' + zc + 'CC)">' + clubLogo(c) + '</span>' +
+          '<span class="c-logo mini" style="background:' + zc + '12">' + clubLogo(c) + '</span>' +
           '<span class="mr-name">' + esc(c.name) + '</span>' +
           '<span class="mr-booth">' + (c.booth ? esc(c.booth) : "待定") + '</span></div>';
       }).join("")
-      : '<div class="map-result none">😅 没有找到匹配的社团或摊位</div>';
+      : '<div class="map-result none">没有找到匹配的社团或摊位</div>';
     results.classList.remove("hidden");
   }
 
   input.addEventListener("input", doSearch);
+  input.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter") return;
+    /* 回车直达第一个结果 */
+    var first = results.querySelector(".map-result[data-club]");
+    if (first && !results.classList.contains("hidden")) first.click();
+  });
   results.addEventListener("click", function (e) {
     var item = e.target.closest(".map-result[data-club]");
     if (!item) return;
@@ -544,9 +620,12 @@ function setupMapSearch() {
     input.value = "";
     zoomToBooth(item.getAttribute("data-club"));
   });
-  document.addEventListener("click", function (e) {
+  /* 重渲染地图会重复执行本函数，先摘掉旧监听再挂新的，避免 document 上监听器累积 */
+  if (state._docHideResults) document.removeEventListener("click", state._docHideResults);
+  state._docHideResults = function (e) {
     if (!e.target.closest(".map-search-wrap")) results.classList.add("hidden");
-  });
+  };
+  document.addEventListener("click", state._docHideResults);
 }
 
 /* ---------------- 全部社团 ---------------- */
@@ -572,18 +651,18 @@ function renderClubs() {
     ? '<div class="club-grid">' + list.map(function (c) {
       var t0 = tagOf(c.tags[0] || "volunteer");
       return '<div class="g-card" data-club="' + c.id + '">' +
-        '<div class="g-logo" style="background:linear-gradient(135deg,' + t0.color + ',' + t0.color + 'CC)">' + clubLogo(c) + '</div>' +
+        '<div class="g-logo" style="background:' + t0.color + '12">' + clubLogo(c) + '</div>' +
         '<div class="g-name">' + esc(c.name) + (c.status === "closed" ? ' <em class="g-closed">已收摊</em>' : "") + '</div>' +
         '<div class="g-cat">' + esc(c.cat) + '</div>' +
         (c.booth
-          ? '<span class="g-booth' + (c.status === "closed" ? " off" : "") + '">📍 ' + esc(c.booth) + '</span>'
-          : '<span class="g-booth pending">📍 待定</span>') +
+          ? '<span class="g-booth' + (c.status === "closed" ? " off" : "") + '">' + esc(c.booth) + '</span>'
+          : '<span class="g-booth pending">待定</span>') +
         '</div>';
     }).join("") + '</div>'
-    : '<div class="tip-card">😅 没有找到匹配的社团，换个关键词试试。</div>';
+    : '<div class="tip-card">没有找到匹配的社团，换个关键词试试。</div>';
 
   box.innerHTML =
-    '<div class="search"><span>🔍</span><input id="kwInput" type="text" placeholder="搜索社团名 / 兴趣 / 关键词" value="' + esc(state.kw) + '"></div>' +
+    '<div class="search">' + ICONS.search + '<input id="kwInput" type="text" placeholder="搜索社团名 / 兴趣 / 关键词" value="' + esc(state.kw) + '"></div>' +
     '<div class="cat-row">' + catRow + '</div>' + grid;
 }
 
@@ -594,16 +673,16 @@ function openDetail(clubId) {
   var t0 = tagOf(c.tags[0] || "volunteer");
   var tags = c.tags.map(function (t) {
     var tg = tagOf(t);
-    return '<span class="d-tag" style="background:' + tg.color + '">' + tg.emoji + ' ' + esc(tg.name) + '</span>';
+    return '<span class="d-tag" style="background:' + tg.color + '14;color:' + shade(tg.color, 0.25) + '">' + tg.emoji + ' ' + esc(tg.name) + '</span>';
   }).join("");
   var s = scoreClub(c);
   var photos = c.photos || [];
   var photoSection = '<div class="d-sec">社团照片</div>' +
     (photos.length
       ? '<div class="d-photos">' + photos.map(function (p) {
-        return '<div class="d-photo"><img src="' + esc(p) + '" alt="' + esc(c.name) + ' 照片"></div>';
+        return '<div class="d-photo"><img src="' + esc(p) + '" alt="' + esc(c.name) + ' 照片" loading="lazy" decoding="async"></div>';
       }).join("") + '</div>'
-      : '<div class="d-photo-empty"><b>📷 社团照片待补充</b><span>负责人上传照片后将自动在此展示</span></div>');
+      : '<div class="d-photo-empty"><b>社团照片待补充</b><span>负责人上传照片后将自动在此展示</span></div>');
   var matchCell = state.selected.length && isRealClub(c)
     ? '<div class="d-cell"><b>匹配你的兴趣</b><span>' +
       (s.matched.length
@@ -611,29 +690,34 @@ function openDetail(clubId) {
         : "换个兴趣看看～") + '</span></div>'
     : "";
   $("#sheetBody").innerHTML =
-    '<div class="d-cover" style="--c:' + t0.color + '">' +
+    '<div class="d-cover">' +
     '<button class="d-close" id="btnCloseDetail">✕</button>' +
-    '<div class="d-emoji">' + clubLogo(c) + '</div>' +
+    '<div class="d-headrow">' +
+    '<div class="d-logo" style="background:' + t0.color + '12">' + clubLogo(c) + '</div>' +
+    '<div class="d-headmain">' +
     '<div class="d-name">' + esc(c.name) + '<span class="d-cat">' + esc(c.cat) + '</span></div>' +
     '<div class="d-slogan">' + esc(c.slogan) + '</div>' +
-    '</div>' +
+    '</div></div></div>' +
     '<div class="d-body">' +
     (tags ? '<div class="d-sec">兴趣标签</div><div class="d-tags">' + tags + '</div>' : "") +
-    '<div class="d-sec">摊位状态</div><div class="d-status">' + statusText(c) +
-    (c.status === "closed" ? '<em>（示例状态，收摊由管理员在 data.js 更新）</em>' : "") + '</div>' +
+    '<div class="d-sec">摊位状态</div><div class="d-status' + (c.status === "closed" ? " closed" : "") + '">' + statusText(c) + '</div>' +
     '<div class="d-sec">社团介绍</div><div class="d-intro">' + esc(c.intro) + '</div>' +
     (c.activities ? '<div class="d-sec">社团活动</div><div class="d-intro">' + esc(c.activities) + '</div>' : "") +
     photoSection +
     '<div class="d-sec">关键信息</div>' +
     '<div class="d-info">' +
     '<div class="d-cell"><b>摊位位置</b><span>' + (c.booth ? esc(c.booth) + '（' + esc(zoneName(boothZone(c))) + '）' : "摊位待定") + '</span></div>' +
-    '<div class="d-cell"><b>咨询 QQ 群</b><span>' + esc(c.qq || "见摊位") + '</span></div>' +
+    (c.qq
+      ? '<div class="d-cell tap" id="cellQQ" role="button" title="点击复制群号"><b>咨询 QQ 群（点击复制）</b><span>' + esc(c.qq) + '</span></div>'
+      : '<div class="d-cell"><b>咨询 QQ 群</b><span>见摊位</span></div>') +
     matchCell +
     '</div>' +
-    (c.booth ? '<button class="d-btn" id="btnGoMap">📍 在地图中查看摊位</button>' : "") +
+    (c.booth ? '<button class="d-btn" id="btnGoMap">' + ICONS.pin + '在地图中查看摊位</button>' : "") +
     '</div>';
   $("#modal").classList.remove("hidden");
   $("#btnCloseDetail").onclick = closeModal;
+  var qqCell = $("#cellQQ");
+  if (qqCell) qqCell.onclick = function () { copyText(c.qq, "QQ 群号已复制"); };
   var go = $("#btnGoMap");
   if (go) go.onclick = function () { closeModal(); switchPage("map"); zoomToBooth(c.id); };
 }
@@ -641,21 +725,21 @@ function openDetail(clubId) {
 /* ---------------- 玩法说明弹层 ---------------- */
 function openGuide() {
   $("#sheetBody").innerHTML =
-    '<div class="d-cover" style="--c:#FF2442">' +
+    '<div class="d-cover plain">' +
     '<button class="d-close" id="btnCloseDetail">✕</button>' +
-    '<div class="d-emoji">📖</div>' +
+    '<div class="d-kicker">GUIDE</div>' +
     '<div class="d-name">活动介绍 · 玩法说明</div>' +
     '<div class="d-slogan">' + esc(CONFIG.eventName) + '</div>' +
     '</div>' +
     '<div class="d-body">' +
     '<div class="guide-box">' +
-    (CONFIG.guide || []).map(function (line) { return '<p class="guide-p">' + esc(line) + '</p>'; }).join("") +
+    (CONFIG.guide || []).map(function (line) { return '<p class="guide-p"><span>' + esc(line) + '</span></p>'; }).join("") +
     '</div>' +
     '<div class="d-info" style="margin-top:16px">' +
     '<div class="d-cell"><b>活动时间</b><span>' + esc(CONFIG.eventDate) + '</span></div>' +
     '<div class="d-cell"><b>活动地点</b><span>' + esc(CONFIG.location) + '</span></div>' +
     '</div>' +
-    '<div class="d-btn" id="btnGuideStart">🎯 去选兴趣，拿专属推荐</div>' +
+    '<button class="d-btn" id="btnGuideStart">去选兴趣，获取专属推荐</button>' +
     '</div>';
   $("#modal").classList.remove("hidden");
   $("#btnCloseDetail").onclick = closeModal;
@@ -677,7 +761,7 @@ function buildWelcome() {
   $("#wSub").textContent = CONFIG.eventName;
   $("#wOrg").textContent = CONFIG.organizer;
   $("#wChips").innerHTML = (CONFIG.modules || []).map(function (m) {
-    return "<span>" + m.emoji + " " + esc(m.name) + "</span>";
+    return '<span style="--c:' + m.color + '"><i></i>' + esc(m.name) + '</span>';
   }).join("");
 }
 
