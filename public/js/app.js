@@ -800,7 +800,10 @@ function apiFetch(path, opts) {
   opts = opts || {};
   opts.headers = Object.assign({ "Content-Type": "application/json" }, opts.headers || {});
   var a = leadAuth();
-  if (a && a.token) opts.headers.Authorization = "Bearer " + a.token;
+  if (a && a.token) {
+    opts.headers.Authorization = "Bearer " + a.token;
+    opts.headers["X-Token"] = a.token; /* 双保险：部分反代会剥 Authorization */
+  }
   if (opts.body && typeof opts.body !== "string") opts.body = JSON.stringify(opts.body);
   return fetch(path, opts).then(function (r) {
     var ct = r.headers.get("content-type") || "";
@@ -826,8 +829,8 @@ function showLeader() {
   apiFetch("/api/session").then(function (j) {
     if (j.role === "admin") renderAdminHome();
     else if (j.club) renderLeaderConsole(j.club);
-    else { leadSaveAuth(null); renderLeaderLogin(); }
-  }).catch(function () { renderLeaderLogin(); });
+    else { leadSaveAuth(null); renderLeaderLogin("登录状态已失效，请重新登录"); }
+  }).catch(function (e) { leadSaveAuth(null); renderLeaderLogin(e.message || "会话校验失败，请重新登录"); });
 }
 
 /* --- 登录页 --- */
