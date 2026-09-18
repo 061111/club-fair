@@ -257,12 +257,18 @@ function boothPill(club) {
   return '<span class="booth-pill pending">摊位待定</span>';
 }
 
-/* 社团头像：有照片用第一张照片，没有用 logo emoji（照片接口；data-fb 为加载失败兜底） */
+/* 社团头像：图片图标 > 第一张活动照片 > logo emoji（data-fb 为图片加载失败兜底） */
 function clubLogo(club) {
-  if (club.photos && club.photos[0]) {
-    return '<img src="' + esc(club.photos[0]) + '" alt="' + esc(club.name) + '" data-fb="' + esc(club.logo) + '" loading="lazy" decoding="async">';
+  var logo = String(club.logo || "");
+  var isImg = logo.indexOf("/uploads/") === 0;
+  var emoji = isImg ? "" : logo;
+  if (isImg) {
+    return '<img src="' + esc(logo) + '" alt="' + esc(club.name) + '" data-fb="' + esc(emoji) + '" loading="lazy" decoding="async">';
   }
-  return club.logo;
+  if (club.photos && club.photos[0]) {
+    return '<img src="' + esc(club.photos[0]) + '" alt="' + esc(club.name) + '" data-fb="' + esc(emoji) + '" loading="lazy" decoding="async">';
+  }
+  return esc(emoji);
 }
 
 function clubCard(club, s, i, ranked) {
@@ -977,9 +983,30 @@ function compressImage(file) {
   });
 }
 
+/* 图标专用：256px + PNG（保留透明底；JPEG 会把透明区域变成黑底） */
+function compressLogoIcon(file) {
+  return new Promise(function (resolve, reject) {
+    var img = new Image();
+    var url = URL.createObjectURL(file);
+    img.onload = function () {
+      var max = 256;
+      var k = Math.min(1, max / Math.max(img.width, img.height));
+      var cv = document.createElement("canvas");
+      cv.width = Math.max(1, Math.round(img.width * k));
+      cv.height = Math.max(1, Math.round(img.height * k));
+      cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+      URL.revokeObjectURL(url);
+      resolve(cv.toDataURL("image/png"));
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); reject(new Error("图片读取失败")); };
+    img.src = url;
+  });
+}
+
 /* --- 编辑表单 --- */
 function renderLeaderEditor(club) {
   var isAdmin = (leadAuth() || {}).role === "admin";
+  var logoIsImg = /^\/uploads\//.test(club.logo || "");
   $("#leaderBody").innerHTML =
     '<div class="ld-wrap">' +
     '<div class="ld-headrow">' +
@@ -991,8 +1018,17 @@ function renderLeaderEditor(club) {
     '<input id="ldName" type="text" value="' + esc(club.name) + '" maxlength="20"' + (isAdmin ? "" : " disabled") + '></label>' +
     '<label class="ld-field"><span>一句话口号</span>' +
     '<input id="ldSlogan" type="text" value="' + esc(club.slogan || "") + '" maxlength="60" placeholder="一句话介绍你的社团"></label>' +
-    '<label class="ld-field"><span>社团图标（一个 emoji）</span>' +
-    '<input id="ldLogo" type="text" value="' + esc(club.logo || "") + '" maxlength="8" placeholder="如 🎸 🏀 🎮"></label>' +
+    '<div class="ld-field"><span>社团图标</span>' +
+    '<div class="ld-logo-row">' +
+    '<div class="ld-logo-cur" id="ldLogoCur">' + clubLogo(club) + '</div>' +
+    '<div class="ld-logo-main">' +
+    '<button type="button" class="ld-logo-btn" id="ldLogoUp">上传图片图标</button>' +
+    '<em class="ld-logo-tip">' + (logoIsImg
+      ? "已用图片图标，游客端优先显示；输入 emoji 并保存可替换"
+      : "方形图片效果最佳，自动压缩；也可直接填 emoji") + '</em>' +
+    '</div></div></div>' +
+    '<label class="ld-field"><span>emoji 图标（选填）</span>' +
+    '<input id="ldLogo" type="text" value="' + (logoIsImg ? "" : esc(club.logo || "")) + '" maxlength="8" placeholder="如 🎸 🏀 🎮"></label>' +
     '<label class="ld-field"><span>咨询 QQ 群</span>' +
     '<input id="ldQq" type="text" value="' + esc(club.qq || "") + '" maxlength="30" placeholder="新生加群用"></label>' +
     '<label class="ld-field"><span>社团介绍</span>' +
@@ -1006,18 +1042,47 @@ function renderLeaderEditor(club) {
     '</div>' +
     '<button class="cta-solid" id="ldSave">保存并同步到游客端</button>' +
     '<div class="ld-err" id="ldErr2"></div>' +
+    '<input type="file" id="ldLogoFile" accept="image/*" style="display:none">' +
     '</div>';
   $("#ldEdBack").onclick = function () {
     if (isAdmin) renderAdminHome(); else renderLeaderConsole(club);
   };
+  /* 图片图标上传：压缩(256px PNG) → 上传 → 立即生效 */
+  var lf = $("#ldLogoFile");
+  $("#ldLogoUp").onclick = function () { lf.click(); };
+  lf.addEventListener("change", function () {
+    var f = lf.files && lf.files[0];
+    if (!f) return;
+    var btn = $("#ldLogoUp");
+    btn.textContent = "上传中…";
+    btn.disabled = true;
+    compressLogoIcon(f)
+      .then(function (dataUrl) { return apiFetch("/api/upload", { method: "POST", body: { data: dataUrl } }); })
+      .then(function (j) { return apiFetch("/api/club/" + club.id, { method: "PUT", body: { logo: j.url } }); })
+      .then(function (j) {
+        Object.assign(club, j.club);
+        var c = CONFIG.clubs.filter(function (x) { return x.id === club.id; })[0];
+        if (c) c.logo = j.club.logo;
+        toast("图标已更新，游客端正在同步");
+        renderLeaderEditor(club);
+      })
+      .catch(function (e) {
+        toast("失败：" + e.message, 2.5);
+        var b = $("#ldLogoUp");
+        if (b) { b.textContent = "上传图片图标"; b.disabled = false; }
+      });
+  });
   $("#ldSave").onclick = function () {
     var patch = {
       slogan: $("#ldSlogan").value.trim(),
-      logo: $("#ldLogo").value.trim(),
       qq: $("#ldQq").value.trim(),
       intro: $("#ldIntro").value.trim(),
       activities: $("#ldAct").value.trim()
     };
+    var logoVal = $("#ldLogo").value.trim();
+    if (logoVal) patch.logo = logoVal;                          /* 填了 emoji → 用 emoji */
+    else if (!logoIsImg) patch.logo = "";                       /* 原为 emoji 且清空 → 置空 */
+    /* 原为图片 URL 且未填 emoji → 不带 logo 字段，保持图片图标 */
     if (isAdmin) { patch.name = $("#ldName").value.trim(); patch.booth = $("#ldBooth").value.trim(); }
     $("#ldSave").textContent = "保存中…";
     $("#ldSave").disabled = true;
