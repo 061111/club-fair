@@ -78,8 +78,9 @@ function cleanSessions() {
 }
 
 function auth(req) {
-  const h = String(req.headers.authorization || "");
-  const m = h.match(/^Bearer\s+(.+)$/i);
+  /* 部分反向代理会剥掉标准 Authorization 头，故同时支持自定义 X-Token 头 */
+  const h = String(req.headers["x-token"] || req.headers.authorization || "");
+  const m = h.match(/^(?:Bearer\s+)?([A-Za-z0-9]+)$/i);
   if (!m) return null;
   cleanSessions();
   const s = db.sessions[m[1]];
