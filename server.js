@@ -149,9 +149,8 @@ function serveStatic(req, res, urlPath) {
       return;
     }
     const ext = path.extname(file).toLowerCase();
-    const cache = p.startsWith("/uploads/")
-      ? "public, max-age=86400"
-      : (ext === ".html" ? "no-cache" : "no-cache");
+    /* 页面与静态资源均不缓存，保证改版即时生效；/uploads/ 图片缓存一天 */
+    const cache = p.startsWith("/uploads/") ? "public, max-age=86400" : "no-cache";
     res.writeHead(200, { "Content-Type": MIME[ext] || "application/octet-stream", "Cache-Control": cache });
     res.end(buf);
   });
@@ -175,6 +174,17 @@ function sanitizePatch(role, patch) {
       if (!Array.isArray(v) || v.length > 6) return { err: "照片最多 6 张" };
       if (!v.every((u) => typeof u === "string" && u.startsWith("/uploads/"))) return { err: "照片地址非法" };
       out[k] = v;
+    } else if (k === "logo") {
+      if (typeof v !== "string") return { err: "logo 类型非法" };
+      v = v.trim();
+      if (v.startsWith("/uploads/")) {
+        /* 图片图标：只允许本服务生成的上传路径，杜绝注入 */
+        if (!/^\/uploads\/[A-Za-z0-9._-]{1,80}$/.test(v)) return { err: "图标地址非法" };
+        out[k] = v;
+      } else {
+        if (v.length > (LIMITS[k] || 100)) return { err: k + " 超长（图片请先上传）" };
+        out[k] = v;
+      }
     } else {
       if (typeof v !== "string") return { err: k + " 类型非法" };
       if (v.length > (LIMITS[k] || 100)) return { err: k + " 超长" };
