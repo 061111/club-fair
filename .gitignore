@@ -2,3 +2,8 @@ node_modules/
 .DS_Store
 Thumbs.db
 *.log
+
+# 运行时数据与机密（含邀请码/超管口令），不要提交到 GitHub
+data/
+uploads/*
+!uploads/.gitkeep
