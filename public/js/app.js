@@ -708,6 +708,12 @@ function openDetail(clubId) {
     (tags ? '<div class="d-sec">兴趣标签</div><div class="d-tags">' + tags + '</div>' : "") +
     '<div class="d-sec">摊位状态</div><div class="d-status' + (c.status === "closed" ? " closed" : "") + '">' + statusText(c) + '</div>' +
     '<div class="d-sec">社团介绍</div><div class="d-intro">' + esc(c.intro) + '</div>' +
+    (c.branches
+      ? '<div class="d-sec">社团分部</div><div class="d-branches">' +
+        c.branches.map(function (b) {
+          return '<button class="branch-btn" data-name="' + esc(b.name) + '" data-desc="' + esc(b.desc || "暂无介绍") + '" data-link="' + esc(b.link || "") + '">' + esc(b.name) + '</button>';
+        }).join("") + '</div>'
+      : "") +
     (c.activities ? '<div class="d-sec">社团活动</div><div class="d-intro">' + esc(c.activities) + '</div>' : "") +
     photoSection +
     '<div class="d-sec">关键信息</div>' +
@@ -722,6 +728,35 @@ function openDetail(clubId) {
     '</div>';
   $("#modal").classList.remove("hidden");
   $("#btnCloseDetail").onclick = closeModal;
+  /* 分部弹窗（合并自 fly390/-1 分支）：点击分部标签弹出介绍卡片，带链接的分部显示跳转按钮 */
+  var oldPop = document.querySelector(".branch-pop");
+  if (oldPop) oldPop.remove();
+  var popBox = document.createElement("div");
+  popBox.className = "branch-pop";
+  popBox.innerHTML =
+    '<div class="branch-pop-card">' +
+    '<h4 id="branchPopTitle"></h4>' +
+    '<p id="branchPopDesc"></p>' +
+    '<div id="gameBtnWrap" style="display:none">' +
+    '<a id="gameLinkBtn" target="_blank" rel="noopener" class="pop-game-btn">进入 Game 部小游戏</a>' +
+    '</div>' +
+    '<button class="pop-close">关闭</button>' +
+    '</div>';
+  document.body.appendChild(popBox);
+  Array.prototype.forEach.call(document.querySelectorAll(".branch-btn"), function (btn) {
+    btn.onclick = function (e) {
+      e.stopPropagation();
+      document.getElementById("branchPopTitle").textContent = btn.getAttribute("data-name") || "分部介绍";
+      document.getElementById("branchPopDesc").textContent = btn.getAttribute("data-desc") || "暂无介绍";
+      var link = btn.getAttribute("data-link");
+      var gameWrap = document.getElementById("gameBtnWrap");
+      if (link) { document.getElementById("gameLinkBtn").href = link; gameWrap.style.display = "block"; }
+      else { gameWrap.style.display = "none"; }
+      popBox.classList.add("show");
+    };
+  });
+  popBox.querySelector(".pop-close").onclick = function () { popBox.classList.remove("show"); };
+  popBox.onclick = function (e) { if (e.target === popBox) popBox.classList.remove("show"); };
   var qqCell = $("#cellQQ");
   if (qqCell) qqCell.onclick = function () { copyText(c.qq, "QQ 群号已复制"); };
   var go = $("#btnGoMap");
