@@ -172,6 +172,20 @@ const CLUBS = [
     qq: "100100116", booth: "C-04", status: "open", photos: [] },
 
   { id: 17, name: "动漫社",     cat: "兴趣娱乐", module: "renwen", logo: "👾", tags: ["anime", "art", "boardgame"],
+    branches: [
+      { name: "外宣部(Make Teapoi Great Again)", desc: "QQ:877742508" },
+      { name: "声优部", desc: "QQ:1153626247" },
+      { name: "YY频道", desc: "QQ:87131207" },
+      { name: "漫画部", desc: "QQ:144924760" },
+      { name: "cos部", desc: "QQ:172128789" },
+      { name: "宅舞部", desc: "QQ:322690487" },
+      { name: "技术部", desc: "QQ:764931102" },
+      { name: "WOTA GEI部", desc: "QQ:1011855066" },
+      { name: "Antiflow 茶几轻音部", desc: "QQ:636081255" },
+      { name: "特摄群", desc: "QQ:973046551" },
+      { name: "茶几偶像同好会", desc: "QQ:378342792" },
+      { name: "Game部", desc: "QQ列表:碧蓝档案：144924760,崩3：429392269，Card Game:@碱石灰，舟：975745392,少前：674504188，月球人：1156414309，车万：905239537", link: "./game.html" }
+    ],
     slogan: "二次元浓度超标警告！",
     intro: "漫宅双修：宅舞、翻唱、cos、痛包手办交流、新番吐槽大会。每年举办校内漫展（示例），欢迎加入这个次元。",
     qq: "100100117", booth: "B-09", status: "open", photos: [] },
