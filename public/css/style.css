@@ -1370,6 +1370,7 @@ b { font-weight: 700; }
 }
 .bp-input:focus { border-color: #E5484D; outline: none; }
 .bp-row.cur .bp-input { border-color: #E5484D; color: #E5484D; font-weight: 600; }
+.ld-batchrow { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
 .bp-empty { text-align: center; color: #A6ABB2; font-size: 13px; padding: 24px 0; }
 
 @media (min-width: 760px) {
