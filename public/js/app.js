@@ -1480,12 +1480,15 @@ function renderAdminHome() {
       '<button class="ld-logout" id="ldLogout">退出</button>' +
       '</div>' +
       '<div class="ld-card">' +
+      '<div class="ld-batchrow"><button class="lb-btn primary" id="btnBatchAssign2">№ 按社团填号</button>' +
+      '<span class="lb-hint">给各社团/国际展位填 1-' + Object.keys(boothBasePositions()).length + ' 号摊位</span></div>' +
       '<div class="ld-label">社团列表（点击编辑）</div>' +
       dbListHtml(codes) +
       '</div>' +
       '<div class="ld-foot">邀请码请通过私聊发给对应负责人；泄露可点「换码」作废重发</div>' +
       '</div>';
     $("#ldLogout").onclick = function () { leadSaveAuth(null); renderLeaderLogin(); };
+    $("#btnBatchAssign2").onclick = openBatchAssign;
     $$("#leaderBody .ld-club-row").forEach(function (row) {
       row.onclick = function () {
         var id = Number(row.getAttribute("data-id"));
