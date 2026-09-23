@@ -1362,6 +1362,14 @@ b { font-weight: 700; }
 .bp-name { flex: 1; font-size: 14px; color: #22262B; }
 .bp-booth { font-size: 11.5px; color: #8A9098; }
 .bp-row.cur .bp-booth { color: #E5484D; font-weight: 600; }
+.bp-wide { max-width: 560px; width: 92%; }
+.bp-input {
+  margin-left: auto; width: 58px; text-align: center;
+  border: 1px solid #E3E6EA; border-radius: 8px; padding: 6px 4px;
+  font-size: 13px; color: #22262B; background: #fff; flex: none;
+}
+.bp-input:focus { border-color: #E5484D; outline: none; }
+.bp-row.cur .bp-input { border-color: #E5484D; color: #E5484D; font-weight: 600; }
 .bp-empty { text-align: center; color: #A6ABB2; font-size: 13px; padding: 24px 0; }
 
 @media (min-width: 760px) {
