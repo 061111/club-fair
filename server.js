@@ -199,7 +199,7 @@ async function handleApi(req, res, pathname) {
   const ip = req.socket.remoteAddress || "?";
 
   if (req.method === "GET" && pathname === "/api/clubs") {
-    sendJson(res, 200, { clubs: db.clubs.map(publicClub) });
+    sendJson(res, 200, { clubs: db.clubs.map(publicClub), layout: db.layout || { positions: {} } });
     return;
   }
 
@@ -251,6 +251,29 @@ async function handleApi(req, res, pathname) {
     club.inviteCode = newCode();
     saveDb();
     sendJson(res, 200, { code: club.inviteCode });
+    return;
+  }
+
+  /* 摊位布局（管理员拖动名牌后的位置覆盖），仅管理员可写 */
+  if (req.method === "PUT" && pathname === "/api/layout") {
+    if (!session || session.role !== "admin") { sendJson(res, 403, { err: "需要管理员权限" }); return; }
+    let body;
+    try { body = JSON.parse((await readBody(req, 128 * 1024)).toString("utf8")); }
+    catch (e) { sendJson(res, 400, { err: "请求体非法" }); return; }
+    const pos = body && body.positions;
+    if (!pos || typeof pos !== "object" || Array.isArray(pos)) { sendJson(res, 400, { err: "positions 格式非法" }); return; }
+    const keys = Object.keys(pos);
+    if (keys.length > 600) { sendJson(res, 400, { err: "摊位数量超限" }); return; }
+    const clean = {};
+    for (const k of keys) {
+      const v = pos[k];
+      if (!v || typeof v.x !== "number" || typeof v.y !== "number") continue;
+      if (!isFinite(v.x) || !isFinite(v.y) || v.x < 0 || v.x > 100 || v.y < 0 || v.y > 100) continue;
+      clean[String(k).slice(0, 8)] = { x: Math.round(v.x * 100) / 100, y: Math.round(v.y * 100) / 100 };
+    }
+    db.layout = { positions: clean, updatedAt: Date.now() };
+    saveDb();
+    sendJson(res, 200, { ok: true, layout: db.layout });
     return;
   }
 
