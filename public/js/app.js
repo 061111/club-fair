@@ -118,7 +118,7 @@ function boothZone(club) {
 function clubById(id) {
   return CONFIG.clubs.filter(function (c) { return c.id === Number(id); })[0];
 }
-function isRealClub(c) { return !!c.module; } // 赞助商等非社团摊位不参与推荐
+function isRealClub(c) { return !!(c && c.module); } // 赞助商等非社团摊位不参与推荐
 function statusText(c) { return STATUS_TEXT[c.status] || "摆摊中"; }
 
 /* ---------------- 屏幕切换 ---------------- */
@@ -326,7 +326,7 @@ function renderRecommend() {
 
 /* ---------------- 场地地图（缩放 / 拖动 / 搜索） ---------------- */
 function isRecommended(club) {
-  return state.selected.length > 0 && isRealClub(club) && scoreClub(club).matched.length > 0;
+  return !!club && state.selected.length > 0 && isRealClub(club) && scoreClub(club).matched.length > 0;
 }
 
 /* --- 场馆平面图（仿百团大战场馆图）：由 MAP_LAYOUT 生成 SVG，可缩放/点击/搜索定位 --- */
@@ -443,7 +443,7 @@ function buildVenueImage() {
     var p = boothPosNow(label);
     var c = clubByBooth[label];
     var closed = c && c.status === "closed";
-    var rec = isRecommended(c);
+    var rec = c ? isRecommended(c) : false;
     var cls = "bo-chip " + p.kind + (p.wide ? " wide" : "") + (c ? (closed ? " on off" : " on") : "") + (rec ? " rec" : "");
     var style = "left:" + p.x + "%;top:" + p.y + "%;";
     if (c && !closed) style += "--bc:" + moduleColor(c) + ";";
