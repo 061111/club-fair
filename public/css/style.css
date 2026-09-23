@@ -1259,3 +1259,112 @@ b { font-weight: 700; }
 .pop-game-btn:hover {
   background: #c73e42;
 }
+
+/* ================= 真实场馆图模式：编号名牌 ================= */
+.bo-stage { position: relative; width: 100%; line-height: 0; user-select: none; -webkit-user-select: none; touch-action: auto; }
+.bo-img { width: 100%; display: block; border-radius: 12px; }
+.bo-stage.layout-on { cursor: grab; }
+.bo-stage.layout-on .bo-chip { cursor: move; }
+
+.bo-chip {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-width: 26px; padding: 1px 3px;
+  border-radius: 5px;
+  border: 1.2px solid rgba(255,255,255,0.85);
+  background: rgba(34,38,43,0.55);
+  color: #fff;
+  font-family: inherit; line-height: 1.15;
+  cursor: pointer;
+  pointer-events: auto;
+  overflow: hidden;
+  box-sizing: border-box;
+  transition: box-shadow 0.15s;
+}
+.bo-chip b { font-size: 10px; font-weight: 700; letter-spacing: 0; }
+.bo-chip span {
+  display: block; max-width: 52px;
+  font-size: 8.5px; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+  opacity: 0.95;
+}
+.bo-chip.ring { background: rgba(255,255,255,0.88); color: #22262B; border-color: rgba(34,38,43,0.25); }
+.bo-chip.ring.on { background: var(--bc, #10AC84); color: #fff; border-color: transparent; }
+.bo-chip.inner { background: rgba(41,171,226,0.92); color: #fff; border-color: rgba(255,255,255,0.9); }
+.bo-chip.inner.on { background: var(--bc, #29ABE2); }
+.bo-chip.on.off { background: #ECEDF0 !important; color: #A6ABB2 !important; border-color: #D9DCE1; }
+.bo-chip.on.off span { text-decoration: line-through; }
+.bo-chip.rec { box-shadow: 0 0 0 2.5px #E5484D; }
+.bo-chip.wide { min-width: 58px; }
+.bo-chip.flash { animation: boothFlash 0.8s ease 4; }
+@keyframes boothFlash {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(229,72,77,0); }
+  50% { box-shadow: 0 0 0 6px rgba(229,72,77,0.65); }
+}
+.bo-chip.dragging { opacity: 0.85; z-index: 50; box-shadow: 0 4px 14px rgba(0,0,0,0.35); }
+
+.bo-special {
+  position: absolute; transform: translate(-50%, -50%);
+  display: flex; align-items: center; justify-content: center;
+  min-width: 30px; height: 22px; padding: 1px 3px;
+  border-radius: 5px;
+  background: #F5B32C; color: #fff;
+  font-size: 9px; font-weight: 700; line-height: 1.15;
+  writing-mode: vertical-rl; letter-spacing: 1px;
+  pointer-events: none;
+}
+.bo-special.tall { height: 40px; }
+
+/* 布局调整工具条 */
+.layout-bar { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; flex-wrap: wrap; }
+.lb-btn {
+  padding: 7px 14px; border-radius: 999px;
+  border: 1px solid var(--line, #E6E8EB); background: #fff;
+  color: #22262B; font-size: 12.5px; cursor: pointer; font-family: inherit;
+}
+.lb-btn.primary { background: #E5484D; color: #fff; border-color: #E5484D; font-weight: 600; }
+.lb-btn:active { transform: scale(0.97); }
+.lb-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.lb-hint { font-size: 11.5px; color: #8A9098; }
+
+/* 摊位分配弹层 */
+.booth-pop {
+  position: fixed; inset: 0; z-index: 10000;
+  background: rgba(0,0,0,0.45);
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.bp-card {
+  width: 100%; max-width: 480px; max-height: 72vh;
+  background: #fff; border-radius: 18px 18px 0 0;
+  padding: 16px 16px 20px;
+  display: flex; flex-direction: column;
+}
+.bp-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.bp-head b { font-size: 16px; }
+.bp-close { font-size: 22px; color: #8A9098; cursor: pointer; padding: 0 6px; }
+.bp-search input {
+  width: 100%; box-sizing: border-box;
+  padding: 9px 12px; border-radius: 10px;
+  border: 1px solid #E6E8EB; font-size: 14px; font-family: inherit;
+  margin-bottom: 10px; outline: none;
+}
+.bp-search input:focus { border-color: #E5484D; }
+.bp-list { overflow-y: auto; flex: 1; }
+.bp-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 6px; border-bottom: 1px solid #F1F2F4;
+  cursor: pointer; border-radius: 8px;
+}
+.bp-row:active { background: #F7F8F9; }
+.bp-row.cur { background: #FDEEEF; }
+.bp-logo { font-size: 18px; width: 26px; text-align: center; }
+.bp-name { flex: 1; font-size: 14px; color: #22262B; }
+.bp-booth { font-size: 11.5px; color: #8A9098; }
+.bp-row.cur .bp-booth { color: #E5484D; font-weight: 600; }
+.bp-empty { text-align: center; color: #A6ABB2; font-size: 13px; padding: 24px 0; }
+
+@media (min-width: 760px) {
+  .booth-pop { align-items: center; }
+  .bp-card { border-radius: 16px; }
+}
