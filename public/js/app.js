@@ -480,6 +480,7 @@ function setupBoothStage() {
     $("#lbActions").classList.toggle("hidden", !on);
   }
   $("#btnLayoutMode").onclick = function () { setMode(true); };
+  $("#btnBatchAssign").onclick = openBatchAssign;
   $("#btnLayoutExit").onclick = function () { setMode(false); };
   $("#btnLayoutReset").onclick = function () {
     state._layoutDraft = {};
@@ -588,6 +589,75 @@ function openBoothAssign(label, stage) {
   });
 }
 
+/* 批量填号：按社团列表直接填摊位号（方案 B 的正向入口） */
+function openBatchAssign() {
+  if (!state._boothBase) state._boothBase = boothBasePositions();
+  var old = $("#boothPop");
+  if (old) old.remove();
+  var pop = document.createElement("div");
+  pop.className = "booth-pop";
+  pop.id = "boothPop";
+  pop.innerHTML =
+    '<div class="bp-card bp-wide"><div class="bp-head"><b>按社团填摊位号</b>' +
+    '<span class="bp-close" id="bpClose">×</span></div>' +
+    '<div class="bp-search"><input id="bpSearch" type="text" placeholder="搜社团名，右侧输入摊位号（1-' +
+    Object.keys(state._boothBase).length + '）"></div>' +
+    '<div class="bp-list" id="bpList"></div></div>';
+  document.body.appendChild(pop);
+  pop.addEventListener("click", function (e) { if (e.target === pop) pop.remove(); });
+  $("#bpClose").onclick = function () { pop.remove(); };
+
+  function renderList(q) {
+    var rows = CONFIG.clubs.filter(function (c) {
+      return c.module && (!q || c.name.indexOf(q) >= 0);
+    }).sort(function (a, b) {
+      return (a.booth ? 0 : 1) - (b.booth ? 0 : 1) || a.id - b.id;
+    }).slice(0, 200).map(function (c) {
+      return '<div class="bp-row' + (c.booth ? " cur" : "") + '" data-id="' + c.id + '">' +
+        '<span class="bp-logo">' + esc(c.logo) + '</span><span class="bp-name">' + esc(c.name) + '</span>' +
+        '<input class="bp-input" type="text" inputmode="numeric" maxlength="4" placeholder="号" value="' + esc(c.booth || "") + '" data-boothinput="' + c.id + '"></div>';
+    }).join("");
+    $("#bpList").innerHTML = rows || '<div class="bp-empty">没有匹配的社团</div>';
+  }
+  renderList("");
+  $("#bpSearch").addEventListener("input", function () { renderList(this.value.trim()); });
+  $("#bpList").addEventListener("change", function (e) {
+    var input = e.target.closest(".bp-input");
+    if (!input) return;
+    var id = Number(input.getAttribute("data-boothinput"));
+    var club = CONFIG.clubs.filter(function (c) { return c.id === id; })[0];
+    if (!club) return;
+    var label = input.value.trim();
+
+    function save(booth) {
+      apiFetch("/api/club/" + id, { method: "PUT", body: { booth: booth } }).then(function () {
+        club.booth = booth;
+        input.value = booth || "";
+        input.closest(".bp-row").classList.toggle("cur", !!booth);
+        renderMap();
+        toast(booth ? (club.name + " → 摊位 " + booth) : ("已清空 " + club.name + " 的摊位"));
+      }).catch(function (er) {
+        input.value = club.booth || "";
+        toast(er.message || "保存失败");
+      });
+    }
+
+    if (!label) { save(""); return; }
+    if (!state._boothBase[label]) {
+      input.value = club.booth || "";
+      toast("没有 " + label + " 号摊位，请填 1-" + Object.keys(state._boothBase).length);
+      return;
+    }
+    var prev = CONFIG.clubs.filter(function (c) { return c.booth === label && c.id !== id; })[0];
+    var doSave = function () { save(label); };
+    if (prev) {
+      apiFetch("/api/club/" + prev.id, { method: "PUT", body: { booth: "" } }).then(function () {
+        prev.booth = ""; doSave();
+      }).catch(function (er) { toast(er.message || "腾挪失败"); });
+    } else doSave();
+  });
+}
+
 function renderMap() {
   var box = $("#page-map");
   var imgMode = !!(CONFIG.mapImage && CONFIG.boothLayout);
@@ -652,6 +722,7 @@ function renderMap() {
   var layoutBar = imgMode && isAdmin
     ? '<div class="layout-bar" id="layoutBar">' +
       '<button class="lb-btn primary" id="btnLayoutMode">✥ 布局调整</button>' +
+      '<button class="lb-btn" id="btnBatchAssign">№ 按社团填号</button>' +
       '<div class="lb-actions hidden" id="lbActions">' +
       '<span class="lb-hint">拖名牌调位置 · 点名牌分配社团</span>' +
       '<button class="lb-btn" id="btnLayoutSave">保存布局</button>' +
