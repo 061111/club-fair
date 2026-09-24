@@ -890,7 +890,12 @@ function zoomToBooth(clubId) {
   if (CONFIG.mapImage && CONFIG.boothLayout) {
     var pct = state._boothPosPct && state._boothPosPct[clubId];
     var stage = $("#boStage");
-    if (!pct || !stage) { openDetail(clubId); return; }
+    if (!stage) { openDetail(clubId); return; }
+    if (!pct) {
+      var nb = CONFIG.clubs.filter(function (x) { return x.id === Number(clubId); })[0];
+      toast(nb ? "「" + nb.name + "」的摊位待定，分配后可在这里定位" : "该社团摊位待定", 2.5);
+      return;
+    }
     state._mapFocus(stage.offsetLeft + stage.offsetWidth * pct.x / 100,
       stage.offsetTop + stage.offsetHeight * pct.y / 100, 1);
     vp.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -904,7 +909,12 @@ function zoomToBooth(clubId) {
 
   var pos = state._boothPos && state._boothPos[clubId];
   var svg = canvas.querySelector(".map-svg");
-  if (!pos || !svg) { openDetail(clubId); return; }
+  if (!svg) { openDetail(clubId); return; }
+  if (!pos) {
+    var nb2 = CONFIG.clubs.filter(function (x) { return x.id === Number(clubId); })[0];
+    toast(nb2 ? "「" + nb2.name + "」的摊位待定，分配后可在这里定位" : "该社团摊位待定", 2.5);
+    return;
+  }
   /* SVG viewBox 坐标 → 画布像素坐标 */
   var kx = svg.clientWidth / CONFIG.mapLayout.width;
   var ky = svg.clientHeight / CONFIG.mapLayout.height;
@@ -1610,6 +1620,7 @@ function bindEvents() {
   });
   $("#page-map").addEventListener("click", function (e) {
     if (state.mapMoved) return; // 拖动地图后不触发点击
+    if (e.target.closest(".map-search-wrap")) return; // 搜索结果点击由结果处理器处理，不弹详情
     var t = e.target.closest("[data-club]");
     if (t) openDetail(t.getAttribute("data-club"));
   });
