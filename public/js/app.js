@@ -448,7 +448,7 @@ function buildVenueImage() {
     var style = "left:" + p.x + "%;top:" + p.y + "%;";
     if (c && !closed) style += "--bc:" + moduleColor(c) + ";";
     html += '<button class="' + cls + '" data-booth="' + esc(label) + '"' + (c ? ' data-club="' + c.id + '"' : "") +
-      ' style="' + style + '"><b>' + esc(label) + '</b>' + (c ? '<span>' + esc(c.name) + '</span>' : "") + '</button>';
+      ' style="' + style + '"><b>' + esc(label) + '</b></button>';
     if (c) state._boothPosPct[c.id] = { x: p.x, y: p.y };
   });
   html += '</div>';
@@ -669,7 +669,7 @@ function renderMap() {
     /* 图底模式：按摊位号排序的索引列表 */
     var assigned = CONFIG.clubs.filter(function (c) { return c.booth; })
       .sort(function (a, b) { return parseInt(a.booth, 10) - parseInt(b.booth, 10); });
-    listRows = '<div class="bl-zone"><i></i>摊位索引 · ' + assigned.length + ' 个社团已分配' +
+    listRows = '<div class="bl-zone"><i></i>摊位对照表 · ' + assigned.length + ' 个社团已分配' +
       (unassigned.length ? '（' + unassigned.length + ' 个待定）' : "") + '</div>' +
       assigned.map(function (c) {
         return '<div class="bl-row" data-club="' + c.id + '">' +
@@ -751,7 +751,7 @@ function renderMap() {
     '</div>' +
     '<div class="map-note">' +
     (imgMode
-      ? '点击摊位名牌查看社团详情；白/青底为场馆原图摊位格，名牌颜色代表出摊状态。'
+      ? '图中圆点为摊位编号（双指/滚轮放大更清晰）：彩色 = 出摊中，灰色划线 = 已收摊，红圈 = 为你推荐。编号对应哪个社团看下方对照表，点击圆点也可直达社团详情。'
       : '当前为仿百团大战的场馆平面图（布局由管理员在 js/data.js 的 MAP_LAYOUT 提前标注，仅作摊位导览、非实时导航）。') +
     '带红圈的是根据你的兴趣推荐的摊位；灰色划线名牌表示该社团已收摊。</div>' +
     '</div>' +
