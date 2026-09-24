@@ -892,7 +892,7 @@ function zoomToBooth(clubId) {
     var stage = $("#boStage");
     if (!pct || !stage) { openDetail(clubId); return; }
     state._mapFocus(stage.offsetLeft + stage.offsetWidth * pct.x / 100,
-      stage.offsetTop + stage.offsetHeight * pct.y / 100, 2.4);
+      stage.offsetTop + stage.offsetHeight * pct.y / 100, 1);
     vp.scrollIntoView({ behavior: "smooth", block: "nearest" });
     var chip = stage.querySelector('[data-club="' + clubId + '"]');
     if (chip) {
@@ -910,7 +910,7 @@ function zoomToBooth(clubId) {
   var ky = svg.clientHeight / CONFIG.mapLayout.height;
   var bx = svg.offsetLeft + pos.x * kx;
   var by = svg.offsetTop + pos.y * ky;
-  state._mapFocus(bx, by, 2.4);
+  state._mapFocus(bx, by, 1);
   vp.scrollIntoView({ behavior: "smooth", block: "nearest" });
   var node = svg.querySelector('[data-club="' + clubId + '"]');
   if (node) {
