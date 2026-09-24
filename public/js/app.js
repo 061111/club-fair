@@ -455,10 +455,23 @@ function buildVenueImage() {
   return html;
 }
 
+/* 圆点随地图宽度等比缩放：--bo-u = 容器宽/829（原图 1px 的实际像素） */
+function sizeBoothStage() {
+  var stage = $("#boStage");
+  if (!stage) return;
+  var w = stage.getBoundingClientRect().width;
+  if (w > 0) stage.style.setProperty("--bo-u", (w / 829).toFixed(4) + "px");
+}
+
 /* 管理员布局模式：拖名牌微调位置 / 点名牌分配社团 */
 function setupBoothStage() {
   var stage = $("#boStage");
   if (!stage) return;
+  sizeBoothStage();
+  if (!window._boResizeHook) {
+    window._boResizeHook = true;
+    window.addEventListener("resize", sizeBoothStage);
+  }
   var admin = (leadAuth() || {}).role === "admin";
   if (!admin) {
     stage.addEventListener("click", function (e) {
